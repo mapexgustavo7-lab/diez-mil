@@ -90,7 +90,7 @@ function render() {
         <button class="${ui.vista === 'ranking' ? 'on' : ''}" data-vista="ranking">Ranking</button>
       </div>
       ${ui.vista === 'ranking' ? pantallaRanking() : enJuego ? pantallaPartida() : pantallaInicio()}
-      ${ui.vista === 'partida' ? '<p class="hint">Anotá el puntaje obtenido en cada turno. Si no sumó, cargá 0.</p>' : ''}
+      ${ui.vista === 'partida' ? '<p class="hint">Anotá el puntaje obtenido en cada turno. Si no sumó, tocá Sumar sin escribir nada y se anota 0.</p>' : ''}
     </div>
     ${ui.confirmar ? dialogo() : ''}`;
 }
@@ -160,7 +160,7 @@ function pantallaPartida() {
       <h3>Cargar puntos del turno</h3>
       <label class="field"><span>Le toca a</span><select id="turno">${opciones}</select></label>
       <div class="add-row">
-        <label class="field"><span>Puntos (0 si perdió el turno)</span>
+        <label class="field"><span>Puntos (vacío = 0, perdió el turno)</span>
           <input id="puntos" inputmode="numeric" pattern="[0-9]*" maxlength="7" value="${esc(ui.puntos)}" placeholder="0" autocomplete="off">
         </label>
         <button class="btn" data-accion="sumar">Sumar</button>
@@ -173,6 +173,31 @@ function pantallaPartida() {
       <div class="actions">
         <button class="btn text" data-accion="deshacer" ${estado.historial.length ? '' : 'disabled'}>Deshacer último</button>
         <button class="btn text danger" data-accion="reiniciar">Nueva partida</button>
+      </div>
+    </div>
+    ${rondas ? tablaHistorial(js, rondas) : ''}`;
+}
+
+// Puntos de cada turno: una fila por ronda, una columna por jugador, con el acumulado debajo.
+function tablaHistorial(js, rondas) {
+  const acumulado = js.map(() => 0);
+  const filas = Array.from({ length: rondas }, (_, r) => `
+    <tr><th>${r + 1}</th>${js.map((j, i) => {
+      const p = j.puntos[r];
+      if (p === undefined) return '<td></td>';
+      acumulado[i] += p;
+      const clase = p < 0 ? 'neg' : p === 0 ? 'zero' : '';
+      return `<td><span class="${clase}">${(p > 0 ? '+' : '') + fmt(p)}</span><small>${fmt(acumulado[i])}</small></td>`;
+    }).join('')}</tr>`).reverse().join('');
+  return `
+    <div class="card section">
+      <h3>Historial de la partida</h3>
+      <p class="note" style="margin:0 0 10px">Puntos de cada turno y, debajo, el total acumulado. Lo más reciente arriba.</p>
+      <div class="hist-wrap">
+        <table class="hist">
+          <thead><tr><th>#</th>${js.map(j => `<th>${esc(j.nombre)}</th>`).join('')}</tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
       </div>
     </div>`;
 }
@@ -260,7 +285,8 @@ function empezar() {
 }
 
 function sumar() {
-  const texto = ui.puntos.trim();
+  // Sin puntos escritos, "Sumar" anota 0 (perdió el turno).
+  const texto = ui.puntos.trim() || '0';
   const pts = /^\d+$/.test(texto) ? Number(texto) : NaN;
   if (!Number.isFinite(pts) || pts > MAX_TURNO) {
     ui.error = `Ingresá un puntaje válido (0 a ${fmt(MAX_TURNO)}).`;
