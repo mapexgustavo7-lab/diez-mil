@@ -1,0 +1,91 @@
+name: Construir APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Necesario para guardar la llave de firma y publicar el APK en Releases.
+permissions:
+  contents: write
+
+env:
+  APK: anotador-10000.apk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Crear proyecto Android
+        run: npx cap add android
+
+      # Usa assets/logo.png como ícono del celular y pantalla de carga (sin esto queda el ícono de Capacitor).
+      - name: Generar ícono y pantalla de carga
+        run: >
+          npx capacitor-assets generate --android
+          --iconBackgroundColor "#26745b" --iconBackgroundColorDark "#26745b"
+          --splashBackgroundColor "#26745b" --splashBackgroundColorDark "#26745b"
+
+      - name: Copiar la app web al proyecto Android
+        run: npx cap sync android
+
+      # Sin esto cada compilación usa una llave distinta y Android no deja
+      # instalar la versión nueva encima de la anterior.
+      - name: Usar siempre la misma llave de firma
+        run: |
+          if [ -f firma/debug.keystore ]; then
+            mkdir -p ~/.android
+            cp firma/debug.keystore ~/.android/debug.keystore
+          fi
+
+      - name: Compilar APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Guardar la llave de firma en el repositorio (solo la primera vez)
+        if: hashFiles('firma/debug.keystore') == ''
+        run: |
+          KS="$HOME/.android/debug.keystore"
+          [ -f "$KS" ] || KS=$(find "$HOME" -name debug.keystore 2>/dev/null | head -n 1)
+          mkdir -p firma
+          cp "$KS" firma/debug.keystore
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firma/debug.keystore
+          git commit -m "Guardar llave de firma del APK [skip ci]"
+          git push
+
+      - name: Preparar APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "$APK"
+
+      # Deja el APK listo para descargar (sin .zip) en la sección Releases.
+      - name: Publicar en Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-ultima-version
+          name: Última versión del APK
+          body: Compilado automáticamente desde el commit ${{ github.sha }}.
+          files: ${{ env.APK }}
+          make_latest: true
+
+      - name: Subir APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ${{ env.APK }}
