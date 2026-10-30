@@ -1,0 +1,159 @@
+/* Base móvil: colores en variables, respeta el notch del iPhone y la barra de gestos. */
+:root {
+  --bg: #f5f7f5;
+  --surface: #ffffff;
+  --border: #e3e8e4;
+  --soft: #f0f2f0;
+  --text: #17352d;
+  --muted: #68736e;
+  --accent: #26745b;
+  --accent-soft: #e4f3ea;
+  --accent-ink: #ffffff;
+  --danger: #9b4545;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+#app { max-width: 560px; margin: 0 auto; min-height: 100vh; }
+
+.screen {
+  padding: calc(18px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* Inputs de 16px: evita que el iPhone haga zoom al tocar un campo. */
+input, select, textarea, button { font-size: 16px; font-family: inherit; }
+
+/* Encabezado */
+.kicker { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 2px; margin: 0; }
+h1 { font-size: 34px; font-weight: 800; margin: 0; line-height: 1.1; }
+.tagline { color: var(--muted); font-size: 14px; margin: 4px 0 20px; }
+
+.card {
+  background: var(--surface); border-radius: 20px; padding: 18px;
+  box-shadow: 0 1px 3px rgba(23, 53, 45, .06);
+}
+.card + .card, .card + .section { margin-top: 14px; }
+h2 { font-size: 20px; margin: 0 0 14px; }
+.label { font-weight: 600; margin: 0 0 8px; }
+
+/* Botones */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 50px; padding: 0 20px; border: 0; border-radius: 25px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; cursor: pointer;
+}
+.btn:active { opacity: .85; }
+.btn.block { width: 100%; }
+.btn.text { background: none; color: var(--accent); padding: 0 8px; min-height: 44px; }
+.btn.text.danger { color: var(--danger); }
+.btn.text:disabled { color: #b9c0bc; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-width: 44px; min-height: 44px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer;
+}
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Campos */
+.field { display: block; margin-top: 10px; }
+.field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.field input, .field select {
+  width: 100%; min-height: 50px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid #c9d1cc; background: var(--surface); color: var(--text);
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+/* Banner de ganador */
+.winner {
+  background: var(--accent-soft); color: var(--text); font-weight: 700;
+  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+}
+
+/* Tabla de puntajes */
+.table-head, .row { display: grid; grid-template-columns: 1fr 72px 84px; align-items: center; }
+.table-head { color: var(--muted); font-size: 11px; font-weight: 700; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+.table-head .total { color: var(--accent); }
+.table-head span:not(:first-child), .row > span { text-align: right; }
+.title-row { display: flex; justify-content: space-between; align-items: baseline; }
+.title-row small { color: var(--muted); font-size: 13px; }
+.row {
+  width: 100%; padding: 12px 6px; border: 0; border-bottom: 1px solid var(--soft);
+  background: none; color: var(--text); text-align: left; cursor: pointer; border-radius: 10px;
+}
+.row:last-child { border-bottom: 0; }
+.row.turn { background: var(--accent-soft); }
+.row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .sub { display: block; color: var(--muted); font-size: 11px; }
+.row .last { color: #555; }
+.row .tot { color: var(--accent); font-size: 18px; font-weight: 700; }
+.row.leader .tot::before { content: "★ "; font-size: 13px; }
+
+/* Carga de puntos */
+.section h3 { font-size: 17px; margin: 0 0 4px; }
+.add-row { display: flex; gap: 10px; align-items: flex-end; }
+.add-row .field { flex: 1; }
+.add-row .btn { min-height: 50px; }
+.quick { margin-top: 10px; }
+.quick { gap: 6px; flex-wrap: nowrap; }
+.quick .chip { flex: 1; min-width: 0; padding: 0 2px; font-size: 15px; }
+.penalty {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; margin-top: 10px;
+  padding: 0 14px; border: 1px solid #e6c9c9; border-radius: 12px;
+  background: #fbf1f1; color: var(--danger); text-align: left; cursor: pointer;
+}
+.penalty strong { font-size: 18px; }
+.penalty span { font-size: 13px; color: #7a5a5a; }
+.penalty:active { opacity: .8; }
+.row .last.neg { color: var(--danger); }
+.error { color: #b3261e; font-size: 13px; margin: 6px 0 0; min-height: 0; }
+.actions { display: flex; justify-content: space-between; margin-top: 6px; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 18px; }
+
+.winner .btn { margin-top: 12px; }
+.note { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+
+/* Pestañas Partida / Ranking */
+.tabs {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 14px;
+  background: #e6ebe7; border-radius: 14px;
+}
+.tabs button {
+  flex: 1; min-height: 44px; border: 0; border-radius: 11px;
+  background: none; color: var(--muted); font-weight: 600; cursor: pointer;
+}
+.tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(23, 53, 45, .1); }
+
+/* Ranking */
+.rank-row {
+  display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 8px;
+  padding: 12px 4px; border-bottom: 1px solid var(--soft);
+}
+.rank-row:last-child { border-bottom: 0; }
+.rank-row .pos { font-size: 20px; text-align: center; color: var(--muted); font-weight: 700; }
+.rank-row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row .sub, .game .sub { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+.rank-row .wins { color: var(--accent); font-size: 22px; font-weight: 800; text-align: right; line-height: 1; }
+.rank-row .wins small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
+.game { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--soft); font-size: 14px; }
+.game .date { color: var(--muted); font-size: 12px; min-width: 48px; padding-top: 2px; }
+.empty p { color: var(--muted); margin: 0; }
+
+/* Diálogo de confirmación */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .35);
+  display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 20;
+}
+.dialog { background: var(--surface); border-radius: 24px; padding: 22px; max-width: 360px; width: 100%; }
+.dialog h2 { margin-bottom: 8px; }
+.dialog p { color: var(--muted); margin: 0 0 16px; }
+.dialog .actions { justify-content: flex-end; gap: 8px; }
