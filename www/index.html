@@ -19,6 +19,12 @@
 <body>
   <div id="app"></div>
 
+  <!-- Firebase va dentro de la app (no desde internet) para que abra sin conexión. -->
+  <script src="js/vendor/firebase-app-compat.js"></script>
+  <script src="js/vendor/firebase-auth-compat.js"></script>
+  <script src="js/vendor/firebase-database-compat.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/nube.js"></script>
   <script src="js/app.js"></script>
   <script>
     // Modo sin conexión para la versión web instalada (en la app Android no hace falta).

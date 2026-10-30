@@ -164,6 +164,17 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 .hist td small { display: block; color: var(--accent); font-size: 11px; }
 .hist tbody tr:last-child th, .hist tbody tr:last-child td { border-bottom: 0; }
 
+/* Grupo del ranking compartido */
+.card.group { margin-bottom: 14px; }
+.card.group h3 { font-size: 17px; margin: 0 0 4px; }
+.card.group .title-row small { text-align: right; }
+.card.group .title-row small.ok { color: var(--accent); }
+.code-input { text-transform: uppercase; letter-spacing: 3px; font-weight: 700; }
+.code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.code-row .note { display: block; margin: 0; }
+.code { display: block; font-size: 28px; letter-spacing: 4px; color: var(--text); }
+.btn:disabled { opacity: .5; }
+
 /* Diálogo de confirmación */
 .overlay {
   position: fixed; inset: 0; background: rgba(0, 0, 0, .35);

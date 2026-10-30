@@ -13,8 +13,12 @@ const app = document.getElementById('app');
 let estado = cargar(CLAVE, e => e && Array.isArray(e.jugadores)) || nuevoEstado();
 // Partidas terminadas: { fecha, ganador, jugadores: [{ nombre, total }] }
 let partidas = cargar(CLAVE_PARTIDAS, Array.isArray) || [];
-// confirmar: null | 'reiniciar' | 'borrarRanking'
-let ui = { vista: 'partida', cantidad: 2, nombres: Array(7).fill(''), puntos: '', error: '', confirmar: null };
+// confirmar: null | 'reiniciar' | 'borrarRanking' | 'salirGrupo'
+let ui = {
+  vista: 'partida', cantidad: 2, nombres: Array(7).fill(''), puntos: '', error: '', confirmar: null,
+  // Ranking compartido
+  grupoNombre: '', grupoCodigo: '', grupoError: '', grupoAviso: '', grupoOcupado: false
+};
 
 function nuevoEstado() {
   // historial: índices de jugador en el orden en que se cargaron los puntos (para deshacer).
@@ -52,10 +56,15 @@ function ganadorActual() {
   return maximo >= META ? { nombre: js[totales.indexOf(maximo)].nombre, total: maximo } : null;
 }
 
+// Partidas terminadas: las del grupo compartido si el celular está en uno, si no las de este celular.
+function listaPartidas() {
+  return Nube.grupo() ? Nube.partidas() : partidas;
+}
+
 // Ranking a partir de las partidas terminadas. Los "Jugador N" sin nombre no cuentan.
 function ranking() {
   const tabla = new Map();
-  for (const p of partidas) {
+  for (const p of listaPartidas()) {
     for (const j of p.jugadores) {
       if (NOMBRE_GENERICO.test(j.nombre)) continue;
       const k = claveNombre(j.nombre);
@@ -202,10 +211,55 @@ function tablaHistorial(js, rondas) {
     </div>`;
 }
 
+// Tarjeta del ranking compartido: crear o unirse a un grupo, o ver el código y el estado de sincronización.
+function tarjetaGrupo() {
+  if (!Nube.disponible) return '';
+  const g = Nube.grupo();
+  const error = ui.grupoError ? `<p class="error">${esc(ui.grupoError)}</p>` : '';
+  if (!g) {
+    return `
+      <div class="card group">
+        <h3>Ranking compartido</h3>
+        <p class="note" style="margin:0 0 4px">Armá un grupo y pasales el código a tus amigos: todos van a ver el mismo ranking en su celular.</p>
+        <div class="add-row">
+          <label class="field"><span>Nombre del grupo</span>
+            <input id="grupoNombre" maxlength="40" value="${esc(ui.grupoNombre)}" placeholder="Ej: Los del viernes" autocomplete="off">
+          </label>
+          <button class="btn" data-accion="crearGrupo" ${ui.grupoOcupado ? 'disabled' : ''}>Crear</button>
+        </div>
+        <div class="add-row">
+          <label class="field"><span>¿Ya tenés un código?</span>
+            <input id="grupoCodigo" class="code-input" maxlength="7" value="${esc(ui.grupoCodigo)}" placeholder="ABC123" autocomplete="off" autocapitalize="characters">
+          </label>
+          <button class="btn" data-accion="unirse" ${ui.grupoOcupado ? 'disabled' : ''}>Unirme</button>
+        </div>
+        ${ui.grupoOcupado ? '<p class="note">Conectando…</p>' : ''}
+        ${error}
+      </div>`;
+  }
+  const pend = Nube.pendientes();
+  const estadoSync = Nube.conectado()
+    ? (pend ? `Subiendo ${pend} ${pend === 1 ? 'partida' : 'partidas'}…` : '✓ Sincronizado')
+    : `Sin conexión${pend ? ` · ${pend} ${pend === 1 ? 'partida espera' : 'partidas esperan'} internet` : ''}`;
+  return `
+    <div class="card group">
+      <div class="title-row"><h3>👥 ${esc(g.nombre)}</h3><small class="${Nube.conectado() ? 'ok' : ''}">${estadoSync}</small></div>
+      <div class="code-row">
+        <div><span class="note">Código del grupo</span><b class="code">${esc(g.codigo)}</b></div>
+        <button class="btn" data-accion="compartirCodigo">Compartir</button>
+      </div>
+      ${ui.grupoAviso ? `<p class="note">${esc(ui.grupoAviso)}</p>` : ''}
+      ${error}
+      <div class="actions"><span></span><button class="btn text danger" data-accion="salirGrupo">Salir del grupo</button></div>
+    </div>`;
+}
+
 function pantallaRanking() {
   const filas = ranking();
+  const lista = listaPartidas();
   if (!filas.length) {
     return `
+      ${tarjetaGrupo()}
       <div class="card empty">
         <h2>Todavía no hay partidas</h2>
         <p>Cuando alguien llegue a 10.000, tocá <b>Terminar y guardar en el ranking</b> y acá vas a ver quién ganó más partidas.</p>
@@ -219,7 +273,7 @@ function pantallaRanking() {
       <span class="wins">${r.ganadas}<small>${r.ganadas === 1 ? 'ganada' : 'ganadas'}</small></span>
     </div>`).join('');
 
-  const recientes = partidas.slice(-10).reverse().map(p => {
+  const recientes = lista.slice(-10).reverse().map(p => {
     const fecha = new Date(p.fecha).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
     const otros = p.jugadores.filter(j => claveNombre(j.nombre) !== claveNombre(p.ganador))
       .map(j => `${esc(j.nombre)} ${fmt(j.total)}`).join(' · ');
@@ -231,15 +285,18 @@ function pantallaRanking() {
       </div>`;
   }).join('');
 
+  // En un grupo, solo quien lo creó puede borrar el ranking.
+  const puedeBorrar = !Nube.grupo() || Nube.esCreador();
   return `
+    ${tarjetaGrupo()}
     <div class="card">
-      <div class="title-row"><h2>Ranking</h2><small>${partidas.length} ${partidas.length === 1 ? 'partida' : 'partidas'}</small></div>
+      <div class="title-row"><h2>Ranking</h2><small>${lista.length} ${lista.length === 1 ? 'partida' : 'partidas'}</small></div>
       ${tabla}
     </div>
     <div class="card section">
       <h3>Últimas partidas</h3>
       ${recientes}
-      <div class="actions"><span></span><button class="btn text danger" data-accion="borrarRanking">Borrar ranking</button></div>
+      ${puedeBorrar ? '<div class="actions"><span></span><button class="btn text danger" data-accion="borrarRanking">Borrar ranking</button></div>' : ''}
     </div>`;
 }
 
@@ -247,8 +304,16 @@ function dialogo() {
   let titulo, texto, boton;
   if (ui.confirmar === 'borrarRanking') {
     titulo = '¿Borrar el ranking?';
-    texto = 'Se borrarán todas las partidas guardadas. No se puede deshacer.';
+    texto = Nube.grupo()
+      ? 'Se borrarán todas las partidas del grupo, también en los celulares de los demás. No se puede deshacer.'
+      : 'Se borrarán todas las partidas guardadas. No se puede deshacer.';
     boton = 'Borrar todo';
+  } else if (ui.confirmar === 'salirGrupo') {
+    const pend = Nube.pendientes();
+    titulo = '¿Salir del grupo?';
+    texto = `Este celular deja de ver el ranking de ${esc(Nube.grupo().nombre)}. Las partidas siguen guardadas para el resto y podés volver a entrar con el código.`
+      + (pend ? ` <b>Ojo: ${pend} ${pend === 1 ? 'partida todavía no se subió y se va' : 'partidas todavía no se subieron y se van'} a perder.</b>` : '');
+    boton = 'Salir';
   } else {
     const g = ganadorActual();
     titulo = '¿Empezar otra partida?';
@@ -320,11 +385,12 @@ function deshacer() {
 function terminar() {
   const g = ganadorActual();
   if (g) {
-    partidas.push({
+    const p = {
       fecha: new Date().toISOString(),
       ganador: g.nombre,
       jugadores: estado.jugadores.map(j => ({ nombre: j.nombre, total: total(j) }))
-    });
+    };
+    if (Nube.grupo()) Nube.agregar(p); else partidas.push(p);
   }
   ui.cantidad = estado.jugadores.length;
   estado.jugadores.forEach((j, i) => { ui.nombres[i] = NOMBRE_GENERICO.test(j.nombre) ? '' : j.nombre; });
@@ -370,16 +436,57 @@ app.addEventListener('click', e => {
     case 'reiniciar': ui.confirmar = 'reiniciar'; render(); break;
     case 'borrarRanking': ui.confirmar = 'borrarRanking'; render(); break;
     case 'cancelar': ui.confirmar = null; render(); break;
+    case 'crearGrupo': entrarAGrupo(() => Nube.crearGrupo(ui.grupoNombre, partidas)); break;
+    case 'unirse': entrarAGrupo(() => Nube.unirse(ui.grupoCodigo, partidas)); break;
+    case 'compartirCodigo': compartirCodigo(); break;
+    case 'salirGrupo': ui.confirmar = 'salirGrupo'; render(); break;
     case 'confirmar':
-      if (ui.confirmar === 'borrarRanking') { partidas = []; ui.confirmar = null; guardar(); render(); }
+      if (ui.confirmar === 'borrarRanking') borrarRanking();
+      else if (ui.confirmar === 'salirGrupo') { Nube.salir(); ui.confirmar = null; ui.grupoAviso = ''; render(); }
       else terminar();
       break;
   }
 });
 
+// Crear o unirse a un grupo. Las partidas que había en este celular pasan al ranking del grupo.
+async function entrarAGrupo(accion) {
+  ui.grupoOcupado = true; ui.grupoError = ''; render();
+  try {
+    const g = await accion();
+    partidas = [];
+    ui.grupoNombre = ''; ui.grupoCodigo = '';
+    ui.grupoAviso = Nube.esCreador() && Nube.partidas().length === 0
+      ? 'Pasales este código a los demás para que se unan desde la pestaña Ranking.'
+      : '';
+    guardar();
+    if (!g) throw new Error('No se pudo entrar al grupo.');
+  } catch (e) {
+    ui.grupoError = e.message;
+  }
+  ui.grupoOcupado = false; render();
+}
+
+async function compartirCodigo() {
+  const g = Nube.grupo();
+  const texto = `Sumate al ranking de 10.000 "${g.nombre}": abrí la app, andá a Ranking y poné el código ${g.codigo}`;
+  try {
+    if (navigator.share) await navigator.share({ text: texto });
+    else { await navigator.clipboard.writeText(texto); ui.grupoAviso = 'Código copiado. Pegalo en WhatsApp o donde quieras.'; render(); }
+  } catch { /* el usuario cerró el menú de compartir */ }
+}
+
+async function borrarRanking() {
+  ui.confirmar = null;
+  if (!Nube.grupo()) { partidas = []; guardar(); render(); return; }
+  try { await Nube.borrarTodo(); ui.grupoError = ''; } catch (e) { ui.grupoError = e.message.includes('internet') ? e.message : 'No se pudo borrar el ranking.'; }
+  render();
+}
+
 app.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.nombre !== undefined) ui.nombres[Number(t.dataset.nombre)] = t.value;
+  if (t.id === 'grupoNombre') ui.grupoNombre = t.value;
+  if (t.id === 'grupoCodigo') { t.value = t.value.toUpperCase(); ui.grupoCodigo = t.value; }
   if (t.id === 'puntos') {
     t.value = t.value.replace(/\D/g, '').slice(0, 7);
     ui.puntos = t.value;
@@ -395,6 +502,14 @@ app.addEventListener('change', e => {
 
 app.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'puntos') { e.preventDefault(); sumar(); }
+});
+
+// Cambios que llegan de la base (otro celular terminó una partida, volvió internet...).
+// No redibuja mientras se escribe en un campo, para no sacarle el cursor al usuario.
+Nube.iniciar(() => {
+  const foco = document.activeElement;
+  if (foco && app.contains(foco) && /INPUT|SELECT/.test(foco.tagName)) return;
+  render();
 });
 
 render();
