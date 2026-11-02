@@ -17,7 +17,9 @@ let partidas = cargar(CLAVE_PARTIDAS, Array.isArray) || [];
 let ui = {
   vista: 'partida', cantidad: 2, nombres: Array(7).fill(''), puntos: '', error: '', confirmar: null,
   // Ranking compartido
-  grupoNombre: '', grupoCodigo: '', grupoError: '', grupoAviso: '', grupoOcupado: false
+  grupoNombre: '', grupoCodigo: '', grupoError: '', grupoAviso: '', grupoOcupado: false,
+  // Corrección de un puntaje: { j: jugador, r: ronda } o null
+  corregir: null, corregirValor: '', corregirError: ''
 };
 
 function nuevoEstado() {
@@ -101,7 +103,8 @@ function render() {
       ${ui.vista === 'ranking' ? pantallaRanking() : enJuego ? pantallaPartida() : pantallaInicio()}
       ${ui.vista === 'partida' ? '<p class="hint">Anotá el puntaje obtenido en cada turno. Si no sumó, tocá Sumar sin escribir nada y se anota 0.</p>' : ''}
     </div>
-    ${ui.confirmar ? dialogo() : ''}`;
+    ${ui.confirmar ? dialogo() : ''}
+    ${ui.corregir ? dialogoCorregir() : ''}`;
 }
 
 function pantallaInicio() {
@@ -196,12 +199,13 @@ function tablaHistorial(js, rondas) {
       if (p === undefined) return '<td></td>';
       acumulado[i] += p;
       const clase = p < 0 ? 'neg' : p === 0 ? 'zero' : '';
-      return `<td><span class="${clase}">${(p > 0 ? '+' : '') + fmt(p)}</span><small>${fmt(acumulado[i])}</small></td>`;
+      return `<td><button class="cell" data-corregir="${i}:${r}"><span class="${clase}">${(p > 0 ? '+' : '') + fmt(p)}</span><small>${fmt(acumulado[i])}</small></button></td>`;
     }).join('')}</tr>`).reverse().join('');
   return `
     <div class="card section">
       <h3>Historial de la partida</h3>
-      <p class="note" style="margin:0 0 10px">Puntos de cada turno y, debajo, el total acumulado. Lo más reciente arriba.</p>
+      <p class="note" style="margin:0 0 10px">Puntos de cada turno y, debajo, el total acumulado. Lo más reciente arriba.
+        <b>¿Anotaste mal? Tocá el puntaje para corregirlo o borrarlo.</b></p>
       <div class="hist-wrap">
         <table class="hist">
           <thead><tr><th>#</th>${js.map(j => `<th>${esc(j.nombre)}</th>`).join('')}</tr></thead>
@@ -335,7 +339,68 @@ function dialogo() {
     </div>`;
 }
 
+// Corregir un puntaje ya anotado: cambiarlo o borrar ese turno.
+function dialogoCorregir() {
+  const { j, r } = ui.corregir;
+  const jugador = estado.jugadores[j];
+  return `
+    <div class="overlay" data-accion="cancelar">
+      <div class="dialog" role="dialog" aria-modal="true">
+        <h2>Corregir puntaje</h2>
+        <p>${esc(jugador.nombre)} · ronda ${r + 1} · anotado: <b>${fmt(jugador.puntos[r])}</b></p>
+        <label class="field" style="margin-top:0"><span>Puntaje correcto (vacío = 0)</span>
+          <input id="corregirValor" inputmode="numeric" pattern="[0-9]*" maxlength="7" value="${esc(ui.corregirValor)}" placeholder="0" autocomplete="off">
+        </label>
+        ${ui.corregirError ? `<p class="error">${esc(ui.corregirError)}</p>` : ''}
+        <button class="penalty" data-accion="corregirMenos50"><strong>−50</strong><span>Cambiar a −50 (dados distintos, sin 1 ni 5)</span></button>
+        <button class="btn block" style="margin-top:14px" data-accion="guardarCorreccion">Guardar</button>
+        <div class="actions">
+          <button class="btn text danger" data-accion="borrarTurno">Borrar turno</button>
+          <button class="btn text" data-accion="cancelar">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 // ---------- Acciones ----------
+
+function abrirCorreccion(j, r) {
+  ui.corregir = { j, r };
+  const p = estado.jugadores[j].puntos[r];
+  ui.corregirValor = p > 0 ? String(p) : '';
+  ui.corregirError = '';
+  render();
+  const campo = document.getElementById('corregirValor');
+  if (campo) { campo.focus(); campo.select(); }
+}
+
+function guardarCorreccion(valor) {
+  const { j, r } = ui.corregir;
+  let pts = valor;
+  if (pts === undefined) {
+    const texto = ui.corregirValor.trim() || '0';
+    pts = /^\d+$/.test(texto) ? Number(texto) : NaN;
+    if (!Number.isFinite(pts) || pts > MAX_TURNO) {
+      ui.corregirError = `Ingresá un puntaje válido (0 a ${fmt(MAX_TURNO)}).`;
+      render(); return;
+    }
+  }
+  estado.jugadores[j].puntos[r] = pts;
+  ui.corregir = null;
+  guardar(); render();
+}
+
+// Saca ese turno del jugador; los turnos siguientes de ese jugador suben una ronda.
+function borrarTurno() {
+  const { j, r } = ui.corregir;
+  estado.jugadores[j].puntos.splice(r, 1);
+  // El turno r del jugador es su aparición número r en el historial de "deshacer".
+  let vista = -1;
+  const pos = estado.historial.findIndex(i => i === j && ++vista === r);
+  if (pos >= 0) estado.historial.splice(pos, 1);
+  ui.corregir = null;
+  guardar(); render();
+}
 
 function empezar() {
   estado = {
@@ -412,11 +477,12 @@ function elegirConocido(nombre) {
 }
 
 app.addEventListener('click', e => {
-  const b = e.target.closest('[data-accion], [data-cantidad], [data-turno], [data-sumar], [data-vista], [data-conocido]');
+  const b = e.target.closest('[data-accion], [data-cantidad], [data-turno], [data-sumar], [data-vista], [data-conocido], [data-corregir]');
   if (!b) return;
   // Un clic dentro del diálogo no debe cerrarlo por el fondo.
   if (b.classList.contains('overlay') && e.target !== b) return;
 
+  if (b.dataset.corregir) { const [j, r] = b.dataset.corregir.split(':').map(Number); abrirCorreccion(j, r); return; }
   if (b.dataset.vista) { ui.vista = b.dataset.vista; render(); return; }
   if (b.dataset.conocido) { elegirConocido(b.dataset.conocido); return; }
   if (b.dataset.cantidad) { ui.cantidad = Number(b.dataset.cantidad); render(); return; }
@@ -435,7 +501,10 @@ app.addEventListener('click', e => {
     case 'terminar': terminar(); break;
     case 'reiniciar': ui.confirmar = 'reiniciar'; render(); break;
     case 'borrarRanking': ui.confirmar = 'borrarRanking'; render(); break;
-    case 'cancelar': ui.confirmar = null; render(); break;
+    case 'cancelar': ui.confirmar = null; ui.corregir = null; render(); break;
+    case 'guardarCorreccion': guardarCorreccion(); break;
+    case 'corregirMenos50': guardarCorreccion(-50); break;
+    case 'borrarTurno': borrarTurno(); break;
     case 'crearGrupo': entrarAGrupo(() => Nube.crearGrupo(ui.grupoNombre, partidas)); break;
     case 'unirse': entrarAGrupo(() => Nube.unirse(ui.grupoCodigo, partidas)); break;
     case 'compartirCodigo': compartirCodigo(); break;
@@ -492,6 +561,10 @@ app.addEventListener('input', e => {
     ui.puntos = t.value;
     if (ui.error) { ui.error = ''; document.getElementById('error').textContent = ''; }
   }
+  if (t.id === 'corregirValor') {
+    t.value = t.value.replace(/\D/g, '').slice(0, 7);
+    ui.corregirValor = t.value;
+  }
 });
 
 app.addEventListener('change', e => {
@@ -502,6 +575,7 @@ app.addEventListener('change', e => {
 
 app.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'puntos') { e.preventDefault(); sumar(); }
+  if (e.key === 'Enter' && e.target.id === 'corregirValor') { e.preventDefault(); guardarCorreccion(); }
 });
 
 // Cambios que llegan de la base (otro celular terminó una partida, volvió internet...).

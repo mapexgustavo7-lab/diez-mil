@@ -1,15 +1,20 @@
 /* Base móvil: colores en variables, respeta el notch del iPhone y la barra de gestos. */
 :root {
-  --bg: #f5f7f5;
-  --surface: #ffffff;
-  --border: #e3e8e4;
-  --soft: #f0f2f0;
-  --text: #17352d;
-  --muted: #68736e;
-  --accent: #26745b;
-  --accent-soft: #e4f3ea;
-  --accent-ink: #ffffff;
-  --danger: #9b4545;
+  /* Tema oscuro */
+  --bg: #0b0f0d;
+  --surface: #161c19;
+  --raised: #1f2723;
+  --border: #2b3530;
+  --soft: #222a26;
+  --text: #e9f0ec;
+  --muted: #8f9e96;
+  --faint: #5d6a63;
+  --accent: #43c08f;
+  --accent-soft: #17352a;
+  --accent-ink: #06130d;
+  --danger: #ff7070;
+  --danger-soft: #3a1c1c;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,7 +44,7 @@ h1 { font-size: 34px; font-weight: 800; margin: 0; line-height: 1.1; }
 
 .card {
   background: var(--surface); border-radius: 20px; padding: 18px;
-  box-shadow: 0 1px 3px rgba(23, 53, 45, .06);
+  border: 1px solid var(--border);
 }
 .card + .card, .card + .section { margin-top: 14px; }
 h2 { font-size: 20px; margin: 0 0 14px; }
@@ -55,12 +60,12 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 .btn.block { width: 100%; }
 .btn.text { background: none; color: var(--accent); padding: 0 8px; min-height: 44px; }
 .btn.text.danger { color: var(--danger); }
-.btn.text:disabled { color: #b9c0bc; }
+.btn.text:disabled { color: var(--faint); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   min-width: 44px; min-height: 44px; padding: 0 14px; border-radius: 12px;
-  border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); background: var(--raised); color: var(--text); font-weight: 600; cursor: pointer;
 }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
@@ -69,7 +74,7 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 .field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .field input, .field select {
   width: 100%; min-height: 50px; padding: 0 14px; border-radius: 12px;
-  border: 1px solid #c9d1cc; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); background: var(--raised); color: var(--text);
 }
 .field input:focus, .field select:focus { outline: 2px solid var(--accent); border-color: transparent; }
 
@@ -94,7 +99,7 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 .row.turn { background: var(--accent-soft); }
 .row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .sub { display: block; color: var(--muted); font-size: 11px; }
-.row .last { color: #555; }
+.row .last { color: var(--muted); }
 .row .tot { color: var(--accent); font-size: 18px; font-weight: 700; }
 .row.leader .tot::before { content: "★ "; font-size: 13px; }
 
@@ -108,14 +113,14 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 .quick .chip { flex: 1; min-width: 0; padding: 0 2px; font-size: 15px; }
 .penalty {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; margin-top: 10px;
-  padding: 0 14px; border: 1px solid #e6c9c9; border-radius: 12px;
-  background: #fbf1f1; color: var(--danger); text-align: left; cursor: pointer;
+  padding: 0 14px; border: 1px solid #5a2a2a; border-radius: 12px;
+  background: var(--danger-soft); color: var(--danger); text-align: left; cursor: pointer;
 }
 .penalty strong { font-size: 18px; }
-.penalty span { font-size: 13px; color: #7a5a5a; }
+.penalty span { font-size: 13px; color: #d4a5a5; }
 .penalty:active { opacity: .8; }
 .row .last.neg { color: var(--danger); }
-.error { color: #b3261e; font-size: 13px; margin: 6px 0 0; min-height: 0; }
+.error { color: var(--danger); font-size: 13px; margin: 6px 0 0; min-height: 0; }
 .actions { display: flex; justify-content: space-between; margin-top: 6px; }
 .hint { color: var(--muted); font-size: 12px; margin-top: 18px; }
 
@@ -125,13 +130,13 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 /* Pestañas Partida / Ranking */
 .tabs {
   display: flex; gap: 4px; padding: 4px; margin-bottom: 14px;
-  background: #e6ebe7; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
 }
 .tabs button {
   flex: 1; min-height: 44px; border: 0; border-radius: 11px;
   background: none; color: var(--muted); font-weight: 600; cursor: pointer;
 }
-.tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(23, 53, 45, .1); }
+.tabs button.on { background: var(--accent-soft); color: var(--accent); }
 
 /* Ranking */
 .rank-row {
@@ -158,9 +163,15 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 }
 .hist tbody th { color: var(--muted); font-size: 12px; font-weight: 600; width: 28px; text-align: left; }
 .hist thead th:first-child { text-align: left; }
+/* Cada puntaje del historial se toca para corregirlo. */
+.hist .cell {
+  display: block; width: 100%; padding: 2px 4px; border: 0; border-radius: 8px;
+  background: none; color: var(--text); text-align: right; cursor: pointer;
+}
+.hist .cell:active { background: var(--accent-soft); }
 .hist td span { display: block; font-weight: 600; }
 .hist td span.neg { color: var(--danger); }
-.hist td span.zero { color: #a3aba7; }
+.hist td span.zero { color: var(--faint); }
 .hist td small { display: block; color: var(--accent); font-size: 11px; }
 .hist tbody tr:last-child th, .hist tbody tr:last-child td { border-bottom: 0; }
 
@@ -177,10 +188,11 @@ h2 { font-size: 20px; margin: 0 0 14px; }
 
 /* Diálogo de confirmación */
 .overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, .35);
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .65);
   display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 20;
 }
-.dialog { background: var(--surface); border-radius: 24px; padding: 22px; max-width: 360px; width: 100%; }
+.dialog { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; max-width: 360px; width: 100%; }
 .dialog h2 { margin-bottom: 8px; }
 .dialog p { color: var(--muted); margin: 0 0 16px; }
-.dialog .actions { justify-content: flex-end; gap: 8px; }
+.dialog .actions { justify-content: flex-end; gap: 8px; align-items: center; }
+.dialog .actions:has([data-accion="borrarTurno"]) { justify-content: space-between; }
