@@ -1,6 +1,6 @@
 {
-  "name": "Anotador 10.000 - Dados",
-  "short_name": "10.000",
+  "name": "Anotadores: 10.000, Truco y Generala",
+  "short_name": "Anotadores",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

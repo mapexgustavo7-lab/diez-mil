@@ -10,6 +10,20 @@ const NOMBRE_GENERICO = /^Jugador \d+$/;
 
 const app = document.getElementById('app');
 
+// Juego abierto: null = pantalla para elegir juego, 'diezmil', 'truco' o 'generala'.
+const CLAVE_JUEGO = 'anotadores.juego';
+const JUEGOS = ['diezmil', 'truco', 'generala'];
+// Color de la barra del celular según el juego (igual al fondo de cada tema en styles.css).
+const COLOR_BARRA = { inicio: '#0b0f0d', diezmil: '#0b0f0d', truco: '#0a0d0c', generala: '#0d1220' };
+let juego = (() => { try { const j = localStorage.getItem(CLAVE_JUEGO); return JUEGOS.includes(j) ? j : null; } catch { return null; } })();
+
+function elegirJuego(j) {
+  juego = JUEGOS.includes(j) ? j : null;
+  try { localStorage.setItem(CLAVE_JUEGO, juego || ''); } catch { /* sin almacenamiento */ }
+  scrollTo(0, 0);
+  render();
+}
+
 let estado = cargar(CLAVE, e => e && Array.isArray(e.jugadores)) || nuevoEstado();
 // Partidas terminadas: { fecha, ganador, jugadores: [{ nombre, total }] }
 let partidas = cargar(CLAVE_PARTIDAS, Array.isArray) || [];
@@ -90,9 +104,17 @@ function conocidos() {
 // ---------- Pantallas ----------
 
 function render() {
+  const tema = juego || 'inicio';
+  document.body.dataset.tema = tema;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COLOR_BARRA[tema]);
+  if (!juego) { app.innerHTML = pantallaJuegos(); return; }
+  if (juego === 'truco') { app.innerHTML = Truco.html(); return; }
+  if (juego === 'generala') { app.innerHTML = Generala.html(); return; }
+
   const enJuego = estado.jugadores.length > 0;
   app.innerHTML = `
     <div class="screen">
+      <button class="volver" data-juego="">‹ Juegos</button>
       <p class="kicker">DADOS · ANOTADOR</p>
       <h1>10.000</h1>
       <p class="tagline">Lleven la cuenta. Disfruten la partida.</p>
@@ -105,6 +127,25 @@ function render() {
     </div>
     ${ui.confirmar ? dialogo() : ''}
     ${ui.corregir ? dialogoCorregir() : ''}`;
+}
+
+// Pantalla de entrada: elegir a qué se juega. Marca los juegos que tienen una partida a medias.
+function pantallaJuegos() {
+  const tarjeta = (id, icono, nombre, detalle, enCurso) => `
+    <button class="juego-card juego-${id}" data-juego="${id}">
+      <span class="juego-icono" aria-hidden="true">${icono}</span>
+      <span class="juego-texto"><b>${nombre}</b><small>${detalle}</small></span>
+      ${enCurso ? '<span class="pill">En curso</span>' : '<span class="juego-flecha" aria-hidden="true">›</span>'}
+    </button>`;
+  return `
+    <div class="screen">
+      <p class="kicker">ANOTADORES</p>
+      <h1>¿Qué jugamos?</h1>
+      <p class="tagline">Elegí el juego y anotá sin papel ni birome.</p>
+      ${tarjeta('diezmil', '🎲', '10.000', 'Dados · 2 a 7 jugadores', estado.jugadores.length > 0)}
+      ${tarjeta('truco', '⚔️', 'Truco', 'Cartas · 2 equipos, con fósforos', Truco.enCurso())}
+      ${tarjeta('generala', '📋', 'Generala', 'Dados · planilla de 2 a 7 jugadores', Generala.enCurso())}
+    </div>`;
 }
 
 function pantallaInicio() {
@@ -477,6 +518,12 @@ function elegirConocido(nombre) {
 }
 
 app.addEventListener('click', e => {
+  // Cambiar de juego (pantalla de inicio o botón "‹ Juegos").
+  const nav = e.target.closest('[data-juego]');
+  if (nav) { elegirJuego(nav.dataset.juego); return; }
+  if (juego === 'truco') { Truco.click(e); return; }
+  if (juego === 'generala') { Generala.click(e); return; }
+
   const b = e.target.closest('[data-accion], [data-cantidad], [data-turno], [data-sumar], [data-vista], [data-conocido], [data-corregir]');
   if (!b) return;
   // Un clic dentro del diálogo no debe cerrarlo por el fondo.
@@ -552,6 +599,8 @@ async function borrarRanking() {
 }
 
 app.addEventListener('input', e => {
+  if (juego === 'truco') { Truco.input(e); return; }
+  if (juego === 'generala') { Generala.input(e); return; }
   const t = e.target;
   if (t.dataset.nombre !== undefined) ui.nombres[Number(t.dataset.nombre)] = t.value;
   if (t.id === 'grupoNombre') ui.grupoNombre = t.value;
@@ -568,12 +617,14 @@ app.addEventListener('input', e => {
 });
 
 app.addEventListener('change', e => {
+  if (juego !== 'diezmil') return;
   if (e.target.id === 'turno') { estado.turno = Number(e.target.value); guardar(); render(); }
   // Al terminar de escribir un nombre, actualiza qué jugadores conocidos están marcados.
   if (e.target.dataset.nombre !== undefined && conocidos().length) render();
 });
 
 app.addEventListener('keydown', e => {
+  if (juego !== 'diezmil') return;
   if (e.key === 'Enter' && e.target.id === 'puntos') { e.preventDefault(); sumar(); }
   if (e.key === 'Enter' && e.target.id === 'corregirValor') { e.preventDefault(); guardarCorreccion(); }
 });
